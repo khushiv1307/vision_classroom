@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="container mt-4">
+    <h3 class="text-center mb-4 fw-bold">Create Account</h3>
+
+    <form method="POST" class="mx-auto p-4 shadow rounded" style="max-width: 450px; background: white;">
+
+        <!-- Role Selection First -->
+        <div class="mb-3">
+            <label class="form-label fw-semibold">Select Role</label>
+            <select name="role" id="roleSelect" class="form-control" required>
+                <option value="student" selected>Student</option>
+                <option value="teacher">Teacher</option>
+            </select>
+        </div>
+
+        <!-- Username -->
+        <div class="mb-3">
+            <label class="form-label fw-semibold">Full Name</label>
+            <input type="text" name="username" class="form-control" placeholder="Enter your full name" required>
+        </div>
+
+        <!-- Roll Number (Students Only) -->
+        <div class="mb-3" id="rollInput">
+            <label class="form-label fw-semibold">Roll Number</label>
+            <input type="text" name="roll_no" class="form-control" placeholder="e.g., 20242MCA0023">
+        </div>
+
+        <!-- Password + Eye Toggle -->
+        <div class="mb-3 position-relative">
+            <label class="form-label fw-semibold">Password</label>
+            <input type="password" id="password" name="password" class="form-control" required placeholder="Enter password">
+
+            <span class="position-absolute"
+                  onclick="togglePassword()"
+                  style="right: 10px; top: 40px; cursor: pointer;">
+                <i id="passwordIcon" class="bi bi-eye-fill"></i>
+            </span>
+        </div>
+
+        {% if message %}
+        <p class="text-danger fw-semibold">{{ message }}</p>
+        {% endif %}
+
+        <button type="submit" class="btn btn-primary w-100 fw-bold">Register</button>
+
+        <p class="text-center mt-3">
+            Already registered?
+            <a href="{{ url_for('login') }}">Login here</a>
+        </p>
+
+    </form>
+</div>
+
+<!-- Script: Role Toggle + Show Password -->
+<script>
+document.getElementById("roleSelect").addEventListener("change", function() {
+    document.getElementById("rollInput").style.display =
+        this.value === "teacher" ? "none" : "block";
+});
+
+function togglePassword() {
+    const pwd = document.getElementById("password");
+    const icon = document.getElementById("passwordIcon");
+
+    if (pwd.type === "password") {
+        pwd.type = "text";
+        icon.classList.remove("bi-eye-fill");
+        icon.classList.add("bi-eye-slash-fill");
+    } else {
+        pwd.type = "password";
+        icon.classList.remove("bi-eye-slash-fill");
+        icon.classList.add("bi-eye-fill");
+    }
+}
+</script>
+
+{% endblock %}

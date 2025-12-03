@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block content %}
+
+<!-- HEADER -->
+<div class="row mb-4 align-items-center">
+  <div class="col-lg-8">
+    <h2 class="page-title d-flex align-items-center gap-2">
+      <i class="bi bi-graph-up-arrow text-emerald"></i>
+      Vision Classroom Dashboard
+    </h2>
+    <p class="text-muted mb-0">
+      Live overview of student presence and engagement for the current session.
+    </p>
+  </div>
+
+  <div class="col-lg-4 text-lg-end mt-3 mt-lg-0">
+    <span class="badge session-badge me-2">
+      {% if status == "Running" %}
+      <span class="dot dot-online"></span> Session Running
+      {% else %}
+      <span class="dot dot-offline"></span> Session Stopped
+      {% endif %}
+    </span>
+  </div>
+</div>
+
+<!-- METRIC CARDS -->
+<div class="row g-4">
+
+  <div class="col-md-4">
+    <div class="metric-card h-100">
+      <p class="metric-label">Total Students</p>
+      <h2 class="metric-value text-primary">{{ total_students }}</h2>
+      <small class="text-muted">Detected this session</small>
+    </div>
+  </div>
+
+  <div class="col-md-4">
+    <div class="metric-card h-100">
+      <p class="metric-label">Total Gestures</p>
+      <h2 class="metric-value text-success">{{ total_gestures }}</h2>
+      <small class="text-muted">Engagement signals</small>
+    </div>
+  </div>
+
+  <div class="col-md-4">
+    <div class="metric-card h-100">
+      <p class="metric-label">Engagement Score</p>
+      <h2 class="metric-value text-emerald">{{ engagement_score }}%</h2>
+      <div class="progress mt-2">
+        <div class="progress-bar bg-success"
+             role="progressbar"
+             style="width: {{ engagement_score }}%">
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- SESSION BUTTONS -->
+<div class="text-center mt-4">
+  {% if status == "Running" %}
+  <a href="{{ url_for('end_session') }}" class="btn btn-danger btn-lg px-5">⛔ End Session</a>
+  {% else %}
+  <a href="{{ url_for('start_session') }}" class="btn btn-success btn-lg px-5">▶ Start Session</a>
+  {% endif %}
+</div>
+
+<!-- Top Gestures Bar Chart -->
+<div class="card p-4 mt-5 shadow-sm">
+  <h5 class="card-title">
+    <i class="bi bi-bar-chart-fill text-emerald"></i>
+    Top Gestures This Session
+  </h5>
+
+  <canvas id="gestChart" height="200"></canvas>
+  <p id="no-gesture-msg" class="text-center text-muted d-none mt-3">
+    No gesture activity detected yet.
+  </p>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+const dataObj = {{ top_gest | tojson }};
+const canvas = document.getElementById("gestChart");
+const emptyMsg = document.getElementById("no-gesture-msg");
+
+if (!dataObj || Object.keys(dataObj).length === 0) {
+  canvas.classList.add("d-none");
+  emptyMsg.classList.remove("d-none");
+} else {
+  const labels = Object.keys(dataObj);
+  const values = Object.values(dataObj);
+
+  new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        data: values,
+        backgroundColor: [
+          "#1DB954", "#00A76F", "#00795F", "#005B49"
+        ],
+        borderRadius: 6
+      }]
+    },
+    options: {
+      plugins: { legend: { display: false } },
+      responsive: true,
+      scales: {
+        y: { beginAtZero: true }
+      }
+    }
+  });
+}
+</script>
+
+{% endblock %}

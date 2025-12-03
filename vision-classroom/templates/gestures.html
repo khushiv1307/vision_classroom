@@ -1,0 +1,255 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h3 class="fw-bold mb-0">✋ Gesture Heatmap</h3>
+    <small class="text-muted">Gesture activity from your sessions</small>
+  </div>
+  <button class="btn btn-outline-secondary btn-sm" id="exportGestCsvBtn">
+    <i class="bi bi-download"></i> Export CSV
+  </button>
+</div>
+
+<!-- Heatmap Card -->
+<div class="card shadow-sm mb-4">
+  <div class="card-body">
+    <h6 class="mb-2 text-muted">Gesture Intensity</h6>
+
+    <div id="heatmapContainer">
+      <table class="table table-sm table-borderless align-middle mb-0">
+        <thead>
+          <tr>
+            <th>Gesture</th>
+            <th>Count</th>
+            <th style="width:60%">Intensity</th>
+          </tr>
+        </thead>
+        <tbody id="heatmapBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Filters -->
+<div class="card shadow-sm mb-3">
+  <div class="card-body">
+    <div class="row g-3 align-items-end">
+
+      <div class="col-md-4">
+        <label class="form-label small text-muted">Filter by Student</label>
+        <select class="form-select" id="filterStudentGest">
+          <option value="">All Students</option>
+          {% for s in students %}
+            <option value="{{ s }}">{{ s }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="col-md-4">
+        <label class="form-label small text-muted">Filter by Session</label>
+        <select class="form-select" id="filterSessionGest">
+          <option value="">All Sessions</option>
+          {% for sess in sessions %}
+            <option value="{{ sess.id }}">Session #{{ sess.id }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="col-md-4">
+        <label class="form-label small text-muted">Search</label>
+        <input type="text" class="form-control" id="searchGestInput" placeholder="Search gesture / student / time...">
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Table -->
+<div class="card shadow-sm">
+  <div class="card-body p-0">
+
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0" id="gesturesTable">
+        <thead class="table-light">
+          <tr>
+            <th>#</th>
+            <th>Timestamp</th>
+            <th>Student</th>
+            <th>Gesture</th>
+            <th>Confidence</th>
+            <th>Session</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for g in gestures %}
+          <tr data-student="{{ g.student_id or '' }}" data-session="{{ g.session_id }}">
+            <td>{{ loop.index }}</td>
+            <td>{{ g.created_at }}</td>
+            <td>{{ g.student_id or '-' }}</td>
+            <td>{{ g.gesture }}</td>
+            <td>{{ "%.2f"|format(g.confidence) }}</td>
+            <td>{{ g.session_id }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center px-3 py-2 border-top">
+      <small class="text-muted" id="gestPageInfo"></small>
+      <div>
+        <button class="btn btn-sm btn-outline-secondary me-1" id="gestPrevPage">« Prev</button>
+        <button class="btn btn-sm btn-outline-secondary" id="gestNextPage">Next »</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if gestures|length == 0 %}
+  <p class="text-muted text-center mt-3 mb-0">No gesture logs yet...</p>
+{% endif %}
+
+<script>
+// ======== Heatmap Rendering ========
+let stats = JSON.parse(`{{ gesture_stats | tojson | safe }}`) || {};
+const labels = Object.keys(stats);
+const values = Object.values(stats);
+
+function renderHeatmapTable() {
+  const tbody = document.getElementById("heatmapBody");
+  tbody.innerHTML = "";
+
+  if (!values.length) return;
+
+  const maxVal = Math.max(...values);
+
+  labels.forEach((label, idx) => {
+    const value = values[idx];
+    const intensity = (value / maxVal) * 100;
+
+    tbody.innerHTML += `
+      <tr>
+        <td>${label}</td>
+        <td>${value}</td>
+        <td>
+          <div class="progress">
+            <div class="progress-bar bg-success" style="width: ${intensity}%;">
+              ${Math.round(intensity)}%
+            </div>
+          </div>
+        </td>
+      </tr>`;
+  });
+}
+renderHeatmapTable();
+
+
+// ======== Pagination + Filters (fixed) ========
+const rowsPerPage = 10;
+let currentPage = 1;
+
+const table = document.getElementById("gesturesTable");
+const tbody = table.querySelector("tbody");
+const allRows = Array.from(tbody.querySelectorAll("tr"));
+let filteredRows = allRows.slice();  // start with all rows
+
+const filterStudent = document.getElementById("filterStudentGest");
+const filterSession = document.getElementById("filterSessionGest");
+const searchInput = document.getElementById("searchGestInput");
+const pageInfo = document.getElementById("gestPageInfo");
+const prevBtn = document.getElementById("gestPrevPage");
+const nextBtn = document.getElementById("gestNextPage");
+
+function applyFilters() {
+  const st = filterStudent.value.toLowerCase();
+  const ss = filterSession.value;
+  const q = searchInput.value.toLowerCase();
+
+  filteredRows = allRows.filter(row => {
+    const student = (row.dataset.student || "").toLowerCase();
+    const session = row.dataset.session || "";
+    const text = row.innerText.toLowerCase();
+
+    const okStudent = !st || student === st;
+    const okSession = !ss || session === ss;
+    const okSearch = !q || text.includes(q);
+
+    return okStudent && okSession && okSearch;
+  });
+
+  currentPage = 1;
+  renderPage();
+}
+
+function renderPage() {
+  const total = filteredRows.length;
+  const totalPages = Math.max(1, Math.ceil(total / rowsPerPage));
+
+  if (currentPage > totalPages) currentPage = totalPages;
+
+  // Hide all rows first
+  allRows.forEach(r => r.style.display = "none");
+
+  if (total === 0) {
+    pageInfo.textContent = "No records found";
+    return;
+  }
+
+  const start = (currentPage - 1) * rowsPerPage;
+  const end = start + rowsPerPage;
+
+  filteredRows.slice(start, end).forEach(r => {
+    r.style.display = "";
+  });
+
+  pageInfo.textContent = `Page ${currentPage} / ${totalPages} — ${total} records`;
+
+  // Enable/disable buttons
+  prevBtn.disabled = currentPage <= 1;
+  nextBtn.disabled = currentPage >= totalPages;
+}
+
+prevBtn.onclick = () => {
+  if (currentPage > 1) {
+    currentPage--;
+    renderPage();
+  }
+};
+
+nextBtn.onclick = () => {
+  const totalPages = Math.max(1, Math.ceil(filteredRows.length / rowsPerPage));
+  if (currentPage < totalPages) {
+    currentPage++;
+    renderPage();
+  }
+};
+
+filterStudent.onchange = applyFilters;
+filterSession.onchange = applyFilters;
+searchInput.oninput = () => { setTimeout(applyFilters, 200); };
+
+// Initial render
+renderPage();
+
+
+// ====== CSV Export ======
+document.getElementById("exportGestCsvBtn").onclick = () => {
+  // Export only currently filtered rows (all pages)
+  let csv = "Timestamp,Student,Gesture,Confidence,Session\n";
+
+  filteredRows.forEach(r => {
+    const c = r.children;
+    csv += `${c[1].innerText},${c[2].innerText},${c[3].innerText},${c[4].innerText},${c[5].innerText}\n`;
+  });
+
+  const blob = new Blob([csv], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "gestures_export.csv";
+  a.click();
+  URL.revokeObjectURL(url);
+};
+</script>
+
+{% endblock %}

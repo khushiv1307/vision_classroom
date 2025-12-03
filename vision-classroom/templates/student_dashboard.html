@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h3 class="fw-bold mb-4 text-primary">
+👤 Welcome, {{ student }}
+</h3>
+
+<div class="row">
+    <!-- Attendance Count -->
+    <div class="col-md-4">
+        <div class="card bg-info text-white p-3 shadow">
+            <h5>Total Attendance</h5>
+            <h2>{{ total_attendance }}</h2>
+        </div>
+    </div>
+
+    <!-- Gesture Count -->
+    <div class="col-md-4">
+        <div class="card bg-success text-white p-3 shadow">
+            <h5>Total Responses</h5>
+            <h2>{{ total_gestures }}</h2>
+        </div>
+    </div>
+
+    <!-- Last Gesture -->
+    <div class="col-md-4">
+        <div class="card bg-warning p-3 shadow">
+            <h5>Last Gesture</h5>
+            <h2>{{ last_gesture or "None Yet" }}</h2>
+        </div>
+    </div>
+</div>
+
+<!-- Attendance Table -->
+<div class="card mt-4 shadow">
+    <div class="card-header bg-primary text-white">
+        📅 Your Attendance History
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-bordered mb-0">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Time</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for a in attendance %}
+                <tr>
+                    <td>{{ a.date }}</td>
+                    <td>{{ a.time }}</td>
+                    <td>{{ a.status }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h3 class="fw-bold mb-0">🧾 Attendance Records</h3>
+    <small class="text-muted">Showing attendance for your sessions</small>
+  </div>
+  <button class="btn btn-outline-secondary btn-sm" id="exportCsvBtn">
+    <i class="bi bi-download"></i> Export CSV
+  </button>
+</div>
+
+<!-- Filters Card -->
+<div class="card shadow-sm mb-3">
+  <div class="card-body">
+    <div class="row g-3 align-items-end">
+
+      <!-- Student Filter -->
+      <div class="col-md-4">
+        <label class="form-label small text-muted mb-1">Filter by Student</label>
+        <select class="form-select" id="filterStudent">
+          <option value="">All Students</option>
+          {% for s in students %}
+            <option value="{{ s }}">{{ s }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Session Filter -->
+      <div class="col-md-4">
+        <label class="form-label small text-muted mb-1">Filter by Session</label>
+        <select class="form-select" id="filterSession">
+          <option value="">All Sessions</option>
+          {% for sess in sessions %}
+            <option value="{{ sess.id }}">
+              Session #{{ sess.id }} –
+              {% if sess.start_time %}{{ sess.start_time.strftime('%Y-%m-%d %H:%M') }}{% else %}{{ sess.id }}{% endif %}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Search -->
+      <div class="col-md-4">
+        <label class="form-label small text-muted mb-1">Search</label>
+        <input type="text"
+               class="form-control"
+               id="searchInput"
+               placeholder="Search by student / date / status...">
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Table Card -->
+<div class="card shadow-sm">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0" id="attendanceTable">
+        <thead class="table-light">
+          <tr>
+            <th scope="col">#</th>
+            <th scope="col">Student</th>
+            <th scope="col">Date</th>
+            <th scope="col">Time</th>
+            <th scope="col">Status</th>
+            <th scope="col">Marked By</th>
+            <th scope="col">Session</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in attendance %}
+          <tr data-student="{{ row.student_id }}" data-session="{{ row.session_id }}">
+            <td>{{ loop.index }}</td>
+            <td>{{ row.student_id }}</td>
+            <td>{{ row.date }}</td>
+            <td>{{ row.time }}</td>
+            <td>
+              {% if row.status == "Present" %}
+                <span class="badge bg-success">Present</span>
+              {% else %}
+                <span class="badge bg-secondary">{{ row.status }}</span>
+              {% endif %}
+            </td>
+            <td>{{ row.marked_by }}</td>
+            <td>{{ row.session_id }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination + info -->
+    <div class="d-flex justify-content-between align-items-center px-3 py-2 border-top">
+      <small class="text-muted" id="pageInfo"></small>
+      <div>
+        <button class="btn btn-sm btn-outline-secondary me-1" id="prevPage">« Prev</button>
+        <button class="btn btn-sm btn-outline-secondary" id="nextPage">Next »</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if attendance|length == 0 %}
+  <p class="text-muted text-center mt-3 mb-0">No attendance records yet...</p>
+{% endif %}
+
+<script>
+const rowsPerPage = 10;
+let currentPage = 1;
+
+const table = document.getElementById('attendanceTable');
+const tbody = table.querySelector('tbody');
+let allRows = Array.from(tbody.querySelectorAll('tr'));
+
+const filterStudent = document.getElementById('filterStudent');
+const filterSession = document.getElementById('filterSession');
+const searchInput = document.getElementById('searchInput');
+const pageInfo = document.getElementById('pageInfo');
+
+function getVisibleRows() {
+  return allRows.filter(r => r.style.display !== 'none');
+}
+
+function applyFilters() {
+  const studentVal = filterStudent.value.toLowerCase();
+  const sessionVal = filterSession.value;
+  const searchVal = searchInput.value.toLowerCase();
+
+  allRows.forEach(row => {
+    const student = (row.dataset.student || '').toLowerCase();
+    const session = row.dataset.session || '';
+    const text = row.innerText.toLowerCase();
+
+    let visible = true;
+    if (studentVal && student !== studentVal) visible = false;
+    if (sessionVal && session !== sessionVal) visible = false;
+    if (searchVal && !text.includes(searchVal)) visible = false;
+
+    row.style.display = visible ? '' : 'none';
+  });
+
+  currentPage = 1;
+  paginate();
+}
+
+function paginate() {
+  const visibleRows = getVisibleRows();
+  const total = visibleRows.length;
+  const totalPages = Math.max(1, Math.ceil(total / rowsPerPage));
+
+  visibleRows.forEach((row, index) => {
+    const start = (currentPage - 1) * rowsPerPage;
+    const end = start + rowsPerPage;
+    row.style.display = (index >= start && index < end) ? '' : 'none';
+  });
+
+  pageInfo.textContent = `Page ${currentPage} of ${totalPages} • ${total} records`;
+}
+
+document.getElementById('prevPage').addEventListener('click', () => {
+  const visibleRows = getVisibleRows();
+  const totalPages = Math.max(1, Math.ceil(visibleRows.length / rowsPerPage));
+  if (currentPage > 1) {
+    currentPage--;
+    paginate();
+  }
+});
+
+document.getElementById('nextPage').addEventListener('click', () => {
+  const visibleRows = getVisibleRows();
+  const totalPages = Math.max(1, Math.ceil(visibleRows.length / rowsPerPage));
+  if (currentPage < totalPages) {
+    currentPage++;
+    paginate();
+  }
+});
+
+filterStudent.addEventListener('change', applyFilters);
+filterSession.addEventListener('change', applyFilters);
+searchInput.addEventListener('input', () => {
+  clearTimeout(window._attSearchTimer);
+  window._attSearchTimer = setTimeout(applyFilters, 200);
+});
+
+// CSV Export
+document.getElementById('exportCsvBtn').addEventListener('click', () => {
+  const visibleRows = getVisibleRows();
+  let csv = "Student,Date,Time,Status,Marked By,Session\n";
+  visibleRows.forEach(row => {
+    const cells = row.querySelectorAll('td');
+    const values = [
+      cells[1].innerText.trim(),
+      cells[2].innerText.trim(),
+      cells[3].innerText.trim(),
+      cells[4].innerText.replace(/\s+/g,' ').trim(),
+      cells[5].innerText.trim(),
+      cells[6].innerText.trim()
+    ];
+    csv += values.join(",") + "\n";
+  });
+
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "attendance_export.csv";
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+// Initial render
+applyFilters();
+</script>
+
+{% endblock %}

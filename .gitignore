@@ -1,31 +1,37 @@
-# Virtual Environment
+# --- Virtual Environment ---
 venv/
+*.pyc
+__pycache__/
+
+# --- Environment ---
 .env
 
-# Project Specific
+# --- Sensitive / Local Only ---
 db.py
-
-# Data / Sensitive
-face_dataset/
-gesture_dataset/
-gesture_data/
 attendance.csv
 gesture_log.csv
 users.csv
 
-# ML Models
-models/
+# --- Raw Data ---
+face_dataset/
+gesture_dataset/
+face_data/
+gesture_data/
+check_model_outputs.py
+collect_data.py
+capture_dataset.py
 
-# Database
+# --- Model Files ---
+*.pkl
+*.h5
+*.keras
+
+# --- Database Files ---
 *.db
 *.sqlite3
-database/db.sql
+database/
 
-# Python cache & logs
-__pycache__/
+# --- Logs & Cache ---
 *.log
-
-# OS / Editor Files
-.idea/
 .DS_Store
-
+.idea/

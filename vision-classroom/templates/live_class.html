@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="row mb-4 align-items-center">
+    <div class="col">
+        <h3 class="fw-bold">🎥 Live Class View</h3>
+        <p class="text-muted">Tracking real-time participation & engagement</p>
+    </div>
+
+    <div class="col-auto">
+        <span id="liveStatus" class="badge bg-success p-2 px-3">● Live</span>
+    </div>
+</div>
+
+<!-- Live Students -->
+<div class="row g-4" id="liveClassContainer">
+    <div class="col-12">
+        <div class="alert alert-info text-center">
+            Waiting for gesture and face activity...
+        </div>
+    </div>
+</div>
+
+
+<script>
+// Color scale for engagement
+function engagementColor(score) {
+    if (score >= 80) return "bg-success";
+    if (score >= 50) return "bg-warning text-dark";
+    return "bg-danger";
+}
+
+// Gesture emoji mapping for clarity
+function gestureEmoji(gesture) {
+    const gestures = {
+        "understood": "👍 Understood",
+        "not_understood": "👎 Not Understood",
+        "raise_hand": "✋ Doubt",
+        "wants_to_answer": "✌ Wants to Answer",
+        "stop": "✊ Stop",
+        "repeat": "☝ Repeat"
+    };
+
+    return gestures[gesture] || "❓";
+}
+
+function updateLiveData() {
+    fetch("/api/live_data")
+        .then(res => res.json())
+        .then(data => {
+            const container = document.getElementById("liveClassContainer");
+            container.innerHTML = "";
+
+            if (!data.students || data.students.length === 0) {
+                container.innerHTML = `
+                    <div class="col-12">
+                        <div class="alert alert-warning text-center">
+                            No student activity detected yet.
+                        </div>
+                    </div>`;
+                return;
+            }
+
+            data.students.forEach(st => {
+                container.innerHTML += `
+                    <div class="col-md-4">
+                        <div class="card shadow-sm rounded-4 border-0">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between">
+                                    <h5 class="fw-semibold text-primary mb-0">${st.student}</h5>
+                                    <span class="badge ${engagementColor(st.engagement)} p-2 px-3">
+                                        ${st.engagement}%
+                                    </span>
+                                </div>
+
+                                <div class="mt-3 p-2 bg-light rounded text-center fw-bold">
+                                    ${gestureEmoji(st.latest_gesture)}
+                                </div>
+
+                                <p class="mt-3 small text-muted">
+                                    Last active: ${st.last_seen}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+        })
+        .catch(() => {
+            const status = document.getElementById("liveStatus");
+            status.innerText = "⚠ Disconnected";
+            status.classList.replace("bg-success", "bg-danger");
+        });
+}
+
+// Refresh live view every 2 seconds
+setInterval(updateLiveData, 2000);
+updateLiveData();
+</script>
+
+{% endblock %}
