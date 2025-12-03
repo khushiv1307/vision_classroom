@@ -1,0 +1,31 @@
+# Virtual Environment
+venv/
+.env
+
+# Project Specific
+db.py
+
+# Data / Sensitive
+face_dataset/
+gesture_dataset/
+gesture_data/
+attendance.csv
+gesture_log.csv
+users.csv
+
+# ML Models
+models/
+
+# Database
+*.db
+*.sqlite3
+database/db.sql
+
+# Python cache & logs
+__pycache__/
+*.log
+
+# OS / Editor Files
+.idea/
+.DS_Store
+
